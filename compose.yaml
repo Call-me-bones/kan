@@ -1,0 +1,38 @@
+name: kan
+
+services:
+  app:
+    image: ghcr.io/call-me-bones/kan:set-by-deploy
+    container_name: kan
+    restart: unless-stopped
+    ports:
+      - "3001:3000"
+    environment:
+      NEXT_PUBLIC_BASE_URL: https://kan.pdlime.net
+      BETTER_AUTH_SECRET: ${BETTER_AUTH_SECRET:?BETTER_AUTH_SECRET missing from .env}
+      POSTGRES_URL: postgres://kan:${POSTGRES_PASSWORD:?POSTGRES_PASSWORD missing from .env}@db:5432/kan
+      NEXT_PUBLIC_ALLOW_CREDENTIALS: "true"
+      NEXT_PUBLIC_DISABLE_SIGN_UP: "false"
+      RUN_MIGRATIONS: "true"
+    depends_on:
+      db:
+        condition: service_healthy
+
+  db:
+    image: postgres:16-alpine
+    container_name: kan-db
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: kan
+      POSTGRES_USER: kan
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?POSTGRES_PASSWORD missing from .env}
+    volumes:
+      - db:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U kan -d kan"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+volumes:
+  db:
