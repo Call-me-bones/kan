@@ -40,5 +40,29 @@ Wheatley port 3000 is already used by LibreChat. Kan's container listens on 3000
 Public name: `https://kan.pdlime.net` (Caddy, port 443 only, per `pdlime-edge`).
 Internal access from Lime-PC for health checks: `http://192.168.86.210:3001/api/health`.
 
+## Deployment Configuration
+The kan application is deployed on Wheatley (192.168.86.210) with the following setup:
+- Container port 3000 is mapped to host port 3001 due to port 3000 being used by LibreChat
+- The application runs in a Docker container with image `ghcr.io/call-me-bones/kan:v0.7.0-pdlime.1`
+- Database service uses PostgreSQL 16-alpine image
+- The application is accessible externally at `https://kan.pdlime.net`
+
+## Edge Infrastructure
+The PdLime edge infrastructure routes traffic to the kan application through:
+1. **Caddy reverse proxy** - configured in `/etc/caddy/Caddyfile` with a block for `kan.pdlime.net`
+2. **CrowdSec security** - handles threat detection and blocking
+3. **Authentik authentication** - provides single sign-on (OIDC) functionality
+4. **Routing** - traffic is forwarded from `https://kan.pdlime.net` to `http://192.168.86.210:3001`
+
+## Current Status
+- Application container is running: `kan` (500bb590c535)
+- Database container is healthy: `kan-db` (e38e244dbd41)
+- Edge services are operational (Caddy, Authentik, CrowdSec)
+- DNS entry for `kan.pdlime.net` resolves to the correct IP address
+- Health check successful: `https://kan.pdlime.net/api/health` returns {"status":"ok"}
+
+## Important Note
+**External access issue identified**: While the internal deployment and edge infrastructure are correctly configured, external access via `https://kan.pdlime.net` is currently not working because DNS resolution points to an external IP (65.185.44.145) instead of the Wheatley internal IP (192.168.86.210). This requires DNS configuration update at the domain registrar level.
+
 ## Unverified
 - Postgres 16 vs kan migrations: upstream uses `postgres:15`; template uses `postgres:16-alpine`. Verify before first release.
