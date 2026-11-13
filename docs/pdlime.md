@@ -1,68 +1,70 @@
 # PdLime additions to kan
 
-## Files added (upstream untouched)
+## Files added
 | File | Purpose |
 |---|---|
 | `compose.yaml` | Wheatley deployment; `app` + `db` services |
 | `docs/pdlime.md` | This file |
-| `docs/decisions.md` | Decision log (already present) |
-| `docs/build-log.md` | Build log (already present) |
+| `docs/decisions.md` | Decision log |
+| `docs/build-log.md` | Build log |
 
-## Custom build rationale
-Kan's `apps/web/Dockerfile` `web` target (`Dockerfile:83-101`) runs `bootstrap.cjs` as `CMD`.
-`bootstrap.cjs` does three things in order:
-1. Writes `public/__ENV.js` from all `NEXT_PUBLIC_*` env vars (`bootstrap.cjs:9-12`)
-2. If `RUN_MIGRATIONS=true`, runs `drizzle-kit migrate` from the embedded `./migrate/` stage, **stripping `NODE_ENV`** so `drizzle.config.ts:7` keeps SSL off — correct for plain Postgres (`bootstrap.cjs:36-57`)
-3. Starts the Next.js standalone server (`bootstrap.cjs:60`)
+Upstream files changed by PdLime are listed under "Upstream files changed" below.
 
-This is the same single-container pattern used in upstream's `cloud/docker-stack.yml:10`. No separate migration container is needed.
+## Custom build
+The image is `ghcr.io/call-me-bones/kan`, built from `apps/web/Dockerfile`, target `web` (`Dockerfile:109`). That stage runs `bootstrap.cjs` (`Dockerfile:130`), which does three things in order:
+1. Writes `public/__ENV.js` from every `NEXT_PUBLIC_*` variable at run time (`bootstrap.cjs:30-37`), so those settings come from `compose.yaml` without a rebuild.
+2. If `RUN_MIGRATIONS=true` (`bootstrap.cjs:49`), runs `drizzle-kit migrate` without `NODE_ENV` (`bootstrap.cjs:52-53`). That keeps SSL off for plain Postgres, because `packages/db/drizzle.config.ts:9` turns SSL on when `NODE_ENV` is `production`.
+3. Starts the Next.js standalone server (`bootstrap.cjs:70`).
+
+This is upstream's single-container pattern (`cloud/docker-stack.yml:9`, `RUN_MIGRATIONS=true`), so there's no separate migration container. Migrations run cleanly on `postgres:16-alpine`: "migrations applied successfully" (`docker logs kan`, 2026-11-13).
 
 ## Env choices
 | Var | Value | Source |
 |---|---|---|
-| `NEXT_PUBLIC_BASE_URL` | `https://kan.pdlime.net` | Edge public name |
-| `BETTER_AUTH_SECRET` | from `.env` | Better-auth session secret |
-| `POSTGRES_URL` | `postgres://kan:<pass>@db:5432/kan` | `packages/db/src/client.ts:14` reads `POSTGRES_URL` |
+| `NEXT_PUBLIC_BASE_URL` | `https://kan.pdlime.net` | Edge public name; also Better Auth's base URL (`packages/auth/src/auth.ts:14`) |
+| `BETTER_AUTH_SECRET` | from `.env` | Better Auth session secret |
+| `POSTGRES_URL` | `postgres://kan:<pass>@db:5432/kan` | `packages/db/src/client.ts:23` reads `POSTGRES_URL` |
 | `POSTGRES_PASSWORD` | from `.env` | Same secret as in `POSTGRES_URL` |
-| `NEXT_PUBLIC_ALLOW_CREDENTIALS` | `"true"` | `.env.example:39-43` — needed for first-user creation |
-| `NEXT_PUBLIC_DISABLE_SIGN_UP` | `"false"` initially, `"true"` after first user | `.env.example:44` |
-| `RUN_MIGRATIONS` | `"true"` | `bootstrap.cjs:36-57` |
-| `OIDC_CLIENT_ID` | from `.env` | `packages/auth/src/plugins.ts:20` — `genericOAuth` `clientId` |
-| `OIDC_CLIENT_SECRET` | from `.env` | `packages/auth/src/plugins.ts:21` — `genericOAuth` `clientSecret` |
-| `OIDC_DISCOVERY_URL` | from `.env` | `packages/auth/src/plugins.ts:22` — OIDC discovery |
+| `NEXT_PUBLIC_ALLOW_CREDENTIALS` | `"false"` | Authentik (OIDC) is the only sign-in |
+| `NEXT_PUBLIC_DISABLE_SIGN_UP` | `"false"`, always | `"true"` refuses a first OIDC sign-in without an invite (`packages/auth/src/hooks.ts:32-41`); Authentik's `pdlime-users` group decides who gets in |
+| `NEXT_PUBLIC_OIDC_AUTO_SIGN_IN` | `"true"` | PdLime patch: `/login` starts the OIDC sign-in by itself (`apps/web/src/views/auth/login/index.tsx`) |
+| `RUN_MIGRATIONS` | `"true"` | `bootstrap.cjs:49` |
+| `OIDC_CLIENT_ID` | from `.env` | `packages/auth/src/plugins.ts:251`: `genericOAuth` `clientId` |
+| `OIDC_CLIENT_SECRET` | from `.env` | `packages/auth/src/plugins.ts:252`: `genericOAuth` `clientSecret` |
+| `OIDC_DISCOVERY_URL` | from `.env` | `packages/auth/src/plugins.ts:253`: `https://auth.pdlime.net/application/o/kan/.well-known/openid-configuration` |
 
-The three `OIDC_*` values configure the `genericOAuth` plugin (`better-auth ^1.4.6`, `packages/auth/src/plugins.ts:18-31`; wired via `createPlugins(db)` in `packages/auth/src/auth.ts:64`). Set all three in `~/stacks/kan/.env` to enable sign-in. **Required Authentik Redirect URI:** `https://kan.pdlime.net/api/auth/callback/oidc`.
+`~/stacks/kan/.env` on Wheatley holds only `BETTER_AUTH_SECRET`, `POSTGRES_PASSWORD`, `OIDC_CLIENT_ID`, `OIDC_CLIENT_SECRET` and `OIDC_DISCOVERY_URL`. Every `NEXT_PUBLIC_*` value is set in `compose.yaml`.
+
+## Sign-in (Authentik OIDC)
+- **Provider:** Better Auth `genericOAuth`, `providerId: "oidc"`, scopes `openid email profile`, PKCE (`packages/auth/src/plugins.ts:243-291`). It is registered only when all three `OIDC_*` are set (`plugins.ts:243-245`).
+- **Authentik redirect URI:** `https://kan.pdlime.net/api/auth/oauth2/callback/oidc`. better-auth is `1.4.6` (`pnpm-lock.yaml:4765`), and its `plugins/generic-oauth/routes.ts` defines `"/oauth2/callback/:providerId"`. The handler is `apps/web/src/pages/api/auth/[...all].ts`.
+- **Flow:**
+  1. The person opens `https://kan.pdlime.net`, and the edge's forward-auth check sends them to Authentik.
+  2. After they sign in, Kan's `/` redirects to `/login` (`apps/web/src/middleware.ts:43-46`).
+  3. `/login` starts the OIDC sign-in by itself. The person is already signed in to Authentik, so it returns at once.
+  4. Kan creates the user on first sign-in and opens `/boards`.
+- **Log out:** returning to Kan signs the person straight back in while their Authentik session lasts.
+
+## Upstream files changed (Rule 11 exception, Craig 2026-11-13)
+Re-check these on every upstream merge:
+| File | Change |
+|---|---|
+| `apps/web/src/views/auth/login/index.tsx` | With `NEXT_PUBLIC_OIDC_AUTO_SIGN_IN=true` and no `error` query parameter, calls `authClient.signIn.oauth2({ providerId: "oidc" })` once on load and shows "Signing in…" |
+| `apps/web/src/env.ts` | Declares `NEXT_PUBLIC_OIDC_AUTO_SIGN_IN` |
+| `turbo.json` | Adds `NEXT_PUBLIC_OIDC_AUTO_SIGN_IN` to the env list |
 
 ## Port 3001
-Wheatley port 3000 is already used by LibreChat. Kan's container listens on 3000 internally (`EXPOSE 3000`, `Dockerfile:100`); we map host `3001:3000`.
+Wheatley's port 3000 is already used by LibreChat. Kan's container listens on 3000 (`EXPOSE 3000`, `Dockerfile:129`), mapped to host `3001:3000`.
 
 ## Edge
-Public name: `https://kan.pdlime.net` (Caddy, port 443 only, per `pdlime-edge`).
-Internal access from Lime-PC for health checks: `http://192.168.86.210:3001/api/health`.
+- **Public name:** `https://kan.pdlime.net`, through the PdLime edge (Caddy, port 443 only).
+- **Route:** `PdLime-Edge/Caddyfile:51-58`, `@kan` with `import authentik`, forwarding to `192.168.86.210:3001`. Released in `edge.5`.
+- **Every request is gated by Authentik:** `https://kan.pdlime.net/` without a session returns `302` to `https://auth.pdlime.net/application/o/authorize/...`.
+- **Health check:** the deploy script runs `curl -fsS -o /dev/null http://localhost:3001/api/health` on Wheatley (`-Deploy-Scripts-/kan/components.psd1`, `Health`).
 
-## Deployment Configuration
-The kan application is deployed on Wheatley (192.168.86.210) with the following setup:
-- Container port 3000 is mapped to host port 3001 due to port 3000 being used by LibreChat
-- The application runs in a Docker container with image `ghcr.io/call-me-bones/kan:v0.7.0-pdlime.1`
-- Database service uses PostgreSQL 16-alpine image
-- The application is accessible externally at `https://kan.pdlime.net`
-
-## Edge Infrastructure
-The PdLime edge infrastructure routes traffic to the kan application through:
-1. **Caddy reverse proxy** - configured in `/etc/caddy/Caddyfile` with a block for `kan.pdlime.net`
-2. **CrowdSec security** - handles threat detection and blocking
-3. **Authentik authentication** - provides single sign-on (OIDC) functionality
-4. **Routing** - traffic is forwarded from `https://kan.pdlime.net` to `http://192.168.86.210:3001`
-
-## Current Status
-- Application container is running: `kan` (500bb590c535)
-- Database container is healthy: `kan-db` (e38e244dbd41)
-- Edge services are operational (Caddy, Authentik, CrowdSec)
-- DNS entry for `kan.pdlime.net` resolves to the correct IP address
-- Health check successful: `https://kan.pdlime.net/api/health` returns {"status":"ok"}
-
-## Important Note
-**External access issue identified**: While the internal deployment and edge infrastructure are correctly configured, external access via `https://kan.pdlime.net` is currently not working because DNS resolution points to an external IP (65.185.44.145) instead of the Wheatley internal IP (192.168.86.210). This requires DNS configuration update at the domain registrar level.
-
-## Unverified
-- Postgres 16 vs kan migrations: upstream uses `postgres:15`; template uses `postgres:16-alpine`. Verify before first release.
+## Release and rollback
+```powershell
+& "\\GLaDOS\PdL-NAS\~ADMIN~\PdLime Projects\-Deploy-Scripts-\kan\Deploy-kan.ps1" -Component kan -Tag <tag>
+& "\\GLaDOS\PdL-NAS\~ADMIN~\PdLime Projects\-Deploy-Scripts-\kan\Deploy-kan.ps1" -Component kan -Tag <earlier tag> -Rollback
+```
+Tags are `v0.7.0-pdlime.<n>`. The base release is `v0.7.0`.

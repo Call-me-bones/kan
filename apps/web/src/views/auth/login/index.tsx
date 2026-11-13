@@ -3,7 +3,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { t } from "@lingui/core/macro";
 import { Trans } from "@lingui/react/macro";
 import { env } from "next-runtime-env";
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
 import { authClient } from "@kan/auth/client";
 
@@ -17,16 +17,57 @@ export default function LoginPage() {
   const [isMagicLinkSent, setIsMagicLinkSent] = useState<boolean>(false);
   const [magicLinkRecipient, setMagicLinkRecipient] = useState<string>("");
 
-  const redirect = useSearchParams().get("next");
+  const searchParams = useSearchParams();
+  const redirect = searchParams.get("next");
+  const oidcError = searchParams.get("error");
 
   const handleMagicLinkSent = (value: boolean, recipient: string) => {
     setIsMagicLinkSent(value);
     setMagicLinkRecipient(recipient);
   };
 
-  const { data } = authClient.useSession();
+  const { data, isPending } = authClient.useSession();
 
   if (data?.user.id) router.push(redirect ?? "/boards");
+
+  // PdLime: with NEXT_PUBLIC_OIDC_AUTO_SIGN_IN=true, skip this page and start
+  // the OIDC sign-in straight away. Behind the PdLime edge the person is
+  // already signed in to Authentik, so the round trip is silent. An `error`
+  // query parameter (a failed round trip) shows the normal page instead, so a
+  // failure can't loop.
+  const isOidcAutoSignIn =
+    env("NEXT_PUBLIC_OIDC_AUTO_SIGN_IN")?.toLowerCase() === "true" &&
+    !oidcError;
+  const oidcStarted = useRef(false);
+  const [oidcFailed, setOidcFailed] = useState(false);
+
+  useEffect(() => {
+    if (!isOidcAutoSignIn || isPending || data?.user.id) return;
+    if (oidcStarted.current) return;
+    oidcStarted.current = true;
+    void authClient.signIn
+      .oauth2({
+        providerId: "oidc",
+        callbackURL: redirect ?? "/boards",
+        errorCallbackURL: "/login?error=oidc",
+      })
+      .then((result) => {
+        if (result.error) setOidcFailed(true);
+      });
+  }, [isOidcAutoSignIn, isPending, data?.user.id, redirect]);
+
+  if (isOidcAutoSignIn && !oidcFailed) {
+    return (
+      <>
+        <PageHead title={t`Login | kan.bn`} />
+        <main className="flex h-screen items-center justify-center bg-light-100 dark:bg-dark-50">
+          <p className="text-sm text-light-1000 dark:text-dark-1000">
+            Signing in…
+          </p>
+        </main>
+      </>
+    );
+  }
 
   return (
     <>

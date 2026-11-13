@@ -11,8 +11,13 @@ services:
       NEXT_PUBLIC_BASE_URL: https://kan.pdlime.net
       BETTER_AUTH_SECRET: ${BETTER_AUTH_SECRET:?BETTER_AUTH_SECRET missing from .env}
       POSTGRES_URL: postgres://kan:${POSTGRES_PASSWORD:?POSTGRES_PASSWORD missing from .env}@db:5432/kan
-      NEXT_PUBLIC_ALLOW_CREDENTIALS: "true"
+      # Sign-in is Authentik only (OIDC); no Kan passwords.
+      NEXT_PUBLIC_ALLOW_CREDENTIALS: "false"
+      # Must stay "false": "true" refuses a first OIDC sign-in without an invite
+      # (packages/auth/src/hooks.ts:32-41). Authentik's pdlime-users group decides who gets in.
       NEXT_PUBLIC_DISABLE_SIGN_UP: "false"
+      # PdLime patch: /login starts the OIDC sign-in by itself (apps/web/src/views/auth/login/index.tsx).
+      NEXT_PUBLIC_OIDC_AUTO_SIGN_IN: "true"
       RUN_MIGRATIONS: "true"
       OIDC_CLIENT_ID: ${OIDC_CLIENT_ID:?OIDC_CLIENT_ID missing from .env}
       OIDC_CLIENT_SECRET: ${OIDC_CLIENT_SECRET:?OIDC_CLIENT_SECRET missing from .env}
