@@ -27,6 +27,11 @@ This is the same single-container pattern used in upstream's `cloud/docker-stack
 | `NEXT_PUBLIC_ALLOW_CREDENTIALS` | `"true"` | `.env.example:39-43` — needed for first-user creation |
 | `NEXT_PUBLIC_DISABLE_SIGN_UP` | `"false"` initially, `"true"` after first user | `.env.example:44` |
 | `RUN_MIGRATIONS` | `"true"` | `bootstrap.cjs:36-57` |
+| `OIDC_CLIENT_ID` | from `.env` | `packages/auth/src/plugins.ts:20` — `genericOAuth` `clientId` |
+| `OIDC_CLIENT_SECRET` | from `.env` | `packages/auth/src/plugins.ts:21` — `genericOAuth` `clientSecret` |
+| `OIDC_DISCOVERY_URL` | from `.env` | `packages/auth/src/plugins.ts:22` — OIDC discovery |
+
+The three `OIDC_*` values configure the `genericOAuth` plugin (`better-auth ^1.4.6`, `packages/auth/src/plugins.ts:18-31`; wired via `createPlugins(db)` in `packages/auth/src/auth.ts:64`). Set all three in `~/stacks/kan/.env` to enable sign-in. **Required Authentik Redirect URI:** `https://kan.pdlime.net/api/auth/callback/oidc`.
 
 ## Port 3001
 Wheatley port 3000 is already used by LibreChat. Kan's container listens on 3000 internally (`EXPOSE 3000`, `Dockerfile:100`); we map host `3001:3000`.
