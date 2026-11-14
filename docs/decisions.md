@@ -2,6 +2,11 @@
 
 Append-only. Newest first. Never edit or delete existing entries.
 
+## 2026-11-13 — Icons: PdLime Kan icon set (upstream files changed)
+- **Decision:** Replace Kan's favicon and app icons with the PdLime Kan icon (lime "K" on a dark tile) from `kan-favicon-pack.zip`; the SVG's "Kora" title/label renamed to "Kan". Files are listed in `docs/pdlime.md`, "Upstream files changed".
+- **Why:** Craig's request, 2026-11-13. It changes upstream files, so `Test-PdLimeApp.ps1` check C24 fails, as it already did for `v0.7.0-pdlime.2` (sign-in change). Craig approved releasing with this exception.
+- **Alternatives:** Keep upstream's icons (rejected by Craig).
+
 ## 2026-11-12 — Sign-in: Authentik OIDC (Better Auth `genericOAuth` plugin)
 - **Decision:** Enable OIDC sign-in. Kan's OIDC provider is Better Auth's `genericOAuth` plugin (`better-auth ^1.4.6`, `packages/auth/package.json:43`), configured in `packages/auth/src/plugins.ts:18-31` and wired in via `createPlugins(db)` (`packages/auth/src/auth.ts:64`). Three vars in `~/stacks/kan/.env`: `OIDC_CLIENT_ID`, `OIDC_CLIENT_SECRET`, `OIDC_DISCOVERY_URL`.
 - **Redirect URI (set in the Authentik app):** `https://kan.pdlime.net/api/auth/callback/oidc` (= `NEXT_PUBLIC_BASE_URL` + `/api/auth` + `/callback/oidc`; provider `id` defaults to `oidc`).
