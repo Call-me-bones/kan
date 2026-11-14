@@ -2,6 +2,11 @@
 
 Append-only. Newest first. One dated entry per change.
 
+## 2026-11-13: Icons, kan v0.7.0-pdlime.3
+- **Done:** PdLime Kan icon set from `kan-favicon-pack.zip` ("Kora" in the SVG renamed to "Kan"): new `favicon.ico`, `favicon.svg`, 16/32 PNGs, `apple-touch-icon.png`, `icon-192.png`, `icon-512.png`; links in `PageHead.tsx`; 192 px icon in `manifest.json`. Checker: `28 passed, 1 failed` — C24 only, the recorded upstream-files exception (`docs/decisions.md`). Checkpoint "Before kan v0.7.0-pdlime.3" taken on GLaDOS.
+- **Released:** `v0.7.0-pdlime.3` → `ghcr.io/call-me-bones/kan:v0.7.0-pdlime.3` (`sha256:5c3a88c06bbd…`)
+- **Result:** Healthy after about 4 seconds; migrations applied, 0 restarts. From Lime-PC, `:3001` serves all five icons byte-identical to the repo, the manifest lists both icons, and `/login` has the three icon links.
+
 ## 2026-11-12: Sign-in, kan (OIDC docs + compose env)
 - **Done:** Documented Authentik OIDC sign-in — `genericOAuth` plugin (`packages/auth/src/plugins.ts:18-31`, `better-auth ^1.4.6`), Redirect URI `https://kan.pdlime.net/api/auth/callback/oidc`. Added `OIDC_CLIENT_ID` / `OIDC_CLIENT_SECRET` / `OIDC_DISCOVERY_URL` (all `${...:?...}`) to `compose.yaml`.
 - **Released:** — (docs + compose only; no image rebuild yet)
