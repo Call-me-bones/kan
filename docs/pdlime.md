@@ -28,6 +28,7 @@ This is upstream's single-container pattern (`cloud/docker-stack.yml:9`, `RUN_MI
 | `NEXT_PUBLIC_ALLOW_CREDENTIALS` | `"false"` | Authentik (OIDC) is the only sign-in |
 | `NEXT_PUBLIC_DISABLE_SIGN_UP` | `"false"`, always | `"true"` refuses a first OIDC sign-in without an invite (`packages/auth/src/hooks.ts:32-41`); Authentik's `pdlime-users` group decides who gets in |
 | `NEXT_PUBLIC_OIDC_AUTO_SIGN_IN` | `"true"` | PdLime patch: `/login` starts the OIDC sign-in by itself (`apps/web/src/views/auth/login/index.tsx`) |
+| `NEXT_PUBLIC_SIGN_OUT_URL` | `https://auth.pdlime.net/flows/-/default/invalidation/` | PdLime patch: after Kan's own sign-out, **Logout** sends the browser here to end the Authentik session (`apps/web/src/components/UserMenu.tsx`); same address as the Apps page's SIGN OUT |
 | `RUN_MIGRATIONS` | `"true"` | `bootstrap.cjs:49` |
 | `OIDC_CLIENT_ID` | from `.env` | `packages/auth/src/plugins.ts:251`: `genericOAuth` `clientId` |
 | `OIDC_CLIENT_SECRET` | from `.env` | `packages/auth/src/plugins.ts:252`: `genericOAuth` `clientSecret` |
@@ -43,7 +44,7 @@ This is upstream's single-container pattern (`cloud/docker-stack.yml:9`, `RUN_MI
   2. After they sign in, Kan's `/` redirects to `/login` (`apps/web/src/middleware.ts:43-46`).
   3. `/login` starts the OIDC sign-in by itself. The person is already signed in to Authentik, so it returns at once.
   4. Kan creates the user on first sign-in and opens `/boards`.
-- **Log out:** returning to Kan signs the person straight back in while their Authentik session lasts.
+- **Log out:** since `v0.7.0-pdlime.4`, **Logout** ends Kan's session and then the Authentik session (`NEXT_PUBLIC_SIGN_OUT_URL`), so the person is really signed out. Before, returning to Kan signed them straight back in. The two onboarding screens' "Sign out" buttons (`views/onboarding/…`) still end only Kan's session.
 
 ## Upstream files changed (Rule 11 exception, Craig 2026-11-13)
 Re-check these on every upstream merge:
@@ -56,6 +57,8 @@ Re-check these on every upstream merge:
 | `apps/web/public/favicon.svg`, `favicon-16x16.png`, `favicon-32x32.png`, `apple-touch-icon.png`, `icon-192.png` | Added, same icon. The SVG's title and label were "Kora" in the pack; renamed to "Kan" |
 | `apps/web/src/components/PageHead.tsx` | Adds `<link>` tags for `favicon.ico`, `favicon.svg` and `apple-touch-icon.png` |
 | `apps/web/public/manifest.json` | Adds the 192×192 icon next to the 512×512 one |
+| `apps/web/src/components/UserMenu.tsx` | **Logout**: after `authClient.signOut()`, goes to `NEXT_PUBLIC_SIGN_OUT_URL` (runtime, `https://` only) instead of `/login` when it is set |
+| `apps/web/src/env.ts`, `turbo.json` | Also declare `NEXT_PUBLIC_SIGN_OUT_URL` |
 
 ## Port 3001
 Wheatley's port 3000 is already used by LibreChat. Kan's container listens on 3000 (`EXPOSE 3000`, `Dockerfile:129`), mapped to host `3001:3000`.

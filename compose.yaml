@@ -18,6 +18,8 @@ services:
       NEXT_PUBLIC_DISABLE_SIGN_UP: "false"
       # PdLime patch: /login starts the OIDC sign-in by itself (apps/web/src/views/auth/login/index.tsx).
       NEXT_PUBLIC_OIDC_AUTO_SIGN_IN: "true"
+      # PdLime patch: Logout also ends the Authentik session (apps/web/src/components/UserMenu.tsx).
+      NEXT_PUBLIC_SIGN_OUT_URL: https://auth.pdlime.net/flows/-/default/invalidation/
       RUN_MIGRATIONS: "true"
       OIDC_CLIENT_ID: ${OIDC_CLIENT_ID:?OIDC_CLIENT_ID missing from .env}
       OIDC_CLIENT_SECRET: ${OIDC_CLIENT_SECRET:?OIDC_CLIENT_SECRET missing from .env}

@@ -3,6 +3,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Menu, Transition } from "@headlessui/react";
 import { t } from "@lingui/core/macro";
+import { env as runtimeEnv } from "next-runtime-env";
 import { useTheme } from "next-themes";
 import { Fragment } from "react";
 import { twMerge } from "tailwind-merge";
@@ -43,6 +44,13 @@ export default function UserMenu({
       onCloseSideNav();
     }
     await authClient.signOut();
+    // PdLime: with NEXT_PUBLIC_SIGN_OUT_URL set, also end the Authentik session there.
+    // Otherwise /login (NEXT_PUBLIC_OIDC_AUTO_SIGN_IN) would sign the person straight back in.
+    const signOutUrl = runtimeEnv("NEXT_PUBLIC_SIGN_OUT_URL");
+    if (signOutUrl?.startsWith("https://")) {
+      window.location.assign(signOutUrl);
+      return;
+    }
     router.push("/login");
   };
 
