@@ -52,6 +52,10 @@ Re-check these on every upstream merge:
 | `apps/web/src/views/auth/login/index.tsx` | With `NEXT_PUBLIC_OIDC_AUTO_SIGN_IN=true` and no `error` query parameter, calls `authClient.signIn.oauth2({ providerId: "oidc" })` once on load and shows "Signing in…" |
 | `apps/web/src/env.ts` | Declares `NEXT_PUBLIC_OIDC_AUTO_SIGN_IN` |
 | `turbo.json` | Adds `NEXT_PUBLIC_OIDC_AUTO_SIGN_IN` to the env list |
+| `apps/web/public/favicon.ico`, `icon-512.png` | Replaced with the PdLime Kan icon (lime "K" on a dark tile), from `kan-favicon-pack.zip` (Craig, 2026-11-13) |
+| `apps/web/public/favicon.svg`, `favicon-16x16.png`, `favicon-32x32.png`, `apple-touch-icon.png`, `icon-192.png` | Added, same icon. The SVG's title and label were "Kora" in the pack; renamed to "Kan" |
+| `apps/web/src/components/PageHead.tsx` | Adds `<link>` tags for `favicon.ico`, `favicon.svg` and `apple-touch-icon.png` |
+| `apps/web/public/manifest.json` | Adds the 192×192 icon next to the 512×512 one |
 
 ## Port 3001
 Wheatley's port 3000 is already used by LibreChat. Kan's container listens on 3000 (`EXPOSE 3000`, `Dockerfile:129`), mapped to host `3001:3000`.
