@@ -2,6 +2,11 @@
 
 Append-only. Newest first. One dated entry per change.
 
+## 2026-11-13: Sign-out, kan v0.7.0-pdlime.4
+- **Done:** `NEXT_PUBLIC_SIGN_OUT_URL` (`compose.yaml`) and the `UserMenu.tsx` Logout change: Kan sign-out, then `https://auth.pdlime.net/flows/-/default/invalidation/`. Checker `28 passed, 1 failed` — C24 only, the recorded upstream-files exception. Checkpoint "Before kan v0.7.0-pdlime.4" on GLaDOS.
+- **Released:** `v0.7.0-pdlime.4` → `ghcr.io/call-me-bones/kan:v0.7.0-pdlime.4` (`sha256:c86a20e912ea…`)
+- **Result:** Build compiled; healthy after about 4 seconds; 0 restarts, no errors in the log. `http://192.168.86.210:3001/__ENV.js` includes `"NEXT_PUBLIC_SIGN_OUT_URL":"https://auth.pdlime.net/flows/-/default/invalidation/"`. Craig to test Logout.
+
 ## 2026-11-13: Icons, kan v0.7.0-pdlime.3
 - **Done:** PdLime Kan icon set from `kan-favicon-pack.zip` ("Kora" in the SVG renamed to "Kan"): new `favicon.ico`, `favicon.svg`, 16/32 PNGs, `apple-touch-icon.png`, `icon-192.png`, `icon-512.png`; links in `PageHead.tsx`; 192 px icon in `manifest.json`. Checker: `28 passed, 1 failed` — C24 only, the recorded upstream-files exception (`docs/decisions.md`). Checkpoint "Before kan v0.7.0-pdlime.3" taken on GLaDOS.
 - **Released:** `v0.7.0-pdlime.3` → `ghcr.io/call-me-bones/kan:v0.7.0-pdlime.3` (`sha256:5c3a88c06bbd…`)
